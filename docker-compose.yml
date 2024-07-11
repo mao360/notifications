@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  notifications:
+    build: ./
+    command:
+      - ./notifications
+    ports:
+      - "8081:8080"
+    depends_on:
+      - db
+  db:
+    restart: always
+    image: postgres:latest
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    command:
+      - psql -U postgres -h localhost -d postgres -p 5432 -f ./schema.sql
+    ports:
+      - "5436:5432"
