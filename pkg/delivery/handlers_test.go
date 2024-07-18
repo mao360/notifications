@@ -1,194 +1,142 @@
 package delivery
 
 import (
-	"github.com/mao360/notifications/pkg/service"
+	"context"
+	"errors"
+	"github.com/mao360/notifications/models"
+	"github.com/mao360/notifications/pkg/service/mocks"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"net/http"
-	"reflect"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
-func TestHandler_Auth(t *testing.T) {
-	type fields struct {
-		service service.ServiceI
-		sugared *zap.SugaredLogger
-	}
-	type args struct {
-		next http.HandlerFunc
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   http.HandlerFunc
+func TestHandler_Registration(t *testing.T) {
+
+	TestCases := []struct {
+		testName     string
+		userStruct   models.User
+		inputBody    string
+		expectedBody string
+		expectedCode int
 	}{
-		// TODO: Add test cases.
+		{
+			testName: "ok",
+			userStruct: models.User{
+				UserName:    "test",
+				Password:    "qwerty",
+				DateOfBirth: "1970-01-01",
+			},
+			inputBody:    `{"user_name":"test","password":"qwerty","date_of_birth":"1970-01-01"}`,
+			expectedBody: ``,
+			expectedCode: 201,
+		},
+		{
+			testName: "wrong body",
+			userStruct: models.User{
+				UserName:    "test",
+				Password:    "qwerty",
+				DateOfBirth: "1970-01-01",
+			},
+			inputBody:    `{"user_name:"test","password":"qwerty","date_of_birth":"1970-01-01"}`,
+			expectedBody: `{"message":"unmarshal error"}`,
+			expectedCode: 500,
+		},
+		{
+			testName: "wrong user",
+			userStruct: models.User{
+				Password:    "qwerty",
+				DateOfBirth: "1970-01-01",
+			},
+			inputBody:    `{"password":"qwerty","date_of_birth":"1970-01-01"}`,
+			expectedBody: `{"message":"newUser error"}`,
+			expectedCode: 500,
+		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+	sugar := logger.Sugar()
+
+	for _, v := range TestCases {
+		t.Run(v.testName, func(t *testing.T) {
+			service := mocks.NewServiceI(t)
+			service.On("NewUser", mock.Anything, &v.userStruct).
+				Maybe().
+				Return(func(context.Context, *models.User) error {
+					var err error
+					switch {
+					case v.testName == "wrong user":
+						err = errors.New("not enough data for create user")
+					case v.testName == "wrong body":
+						err = errors.New("unmarshal error")
+					}
+					return err
+				})
+
 			h := &Handler{
-				service: tt.fields.service,
-				sugared: tt.fields.sugared,
+				service: service,
+				sugared: sugar,
 			}
-			if got := h.Auth(tt.args.next); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Auth() = %v, want %v", got, tt.want)
-			}
+
+			handler := http.HandlerFunc(h.Registration)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/reg", strings.NewReader(v.inputBody))
+			handler.ServeHTTP(w, r)
+			assert.Equal(t, v.expectedBody, w.Body.String())
+			assert.Equal(t, v.expectedCode, w.Code)
 		})
 	}
 }
 
 func TestHandler_Authorization(t *testing.T) {
-	type fields struct {
-		service service.ServiceI
-		sugared *zap.SugaredLogger
-	}
-	type args struct {
-		w http.ResponseWriter
-		r *http.Request
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h := &Handler{
-				service: tt.fields.service,
-				sugared: tt.fields.sugared,
-			}
-			h.Authorization(tt.args.w, tt.args.r)
-		})
-	}
-}
 
-func TestHandler_GetNotification(t *testing.T) {
-	type fields struct {
-		service service.ServiceI
-		sugared *zap.SugaredLogger
-	}
-	type args struct {
-		w http.ResponseWriter
-		r *http.Request
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
+	TestCases := []struct {
+		testName     string
+		userName     string
+		password     string
+		inputBody    string
+		expectedBody string
+		expectedCode int
 	}{
-		// TODO: Add test cases.
+		{
+			testName:     "ok",
+			userName:     "test",
+			password:     "qwerty",
+			inputBody:    `{"user_name":"test","password":"qwerty"}`,
+			expectedBody: `{"token":"someJWT"}`,
+			expectedCode: 200,
+		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h := &Handler{
-				service: tt.fields.service,
-				sugared: tt.fields.sugared,
-			}
-			h.GetNotification(tt.args.w, tt.args.r)
-		})
-	}
-}
 
-func TestHandler_Registration(t *testing.T) {
-	type fields struct {
-		service service.ServiceI
-		sugared *zap.SugaredLogger
-	}
-	type args struct {
-		w http.ResponseWriter
-		r *http.Request
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h := &Handler{
-				service: tt.fields.service,
-				sugared: tt.fields.sugared,
-			}
-			h.Registration(tt.args.w, tt.args.r)
-		})
-	}
-}
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+	sugar := logger.Sugar()
 
-func TestHandler_Subscribe(t *testing.T) {
-	type fields struct {
-		service service.ServiceI
-		sugared *zap.SugaredLogger
-	}
-	type args struct {
-		w http.ResponseWriter
-		r *http.Request
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h := &Handler{
-				service: tt.fields.service,
-				sugared: tt.fields.sugared,
-			}
-			h.Subscribe(tt.args.w, tt.args.r)
-		})
-	}
-}
+	for _, v := range TestCases {
+		t.Run(v.testName, func(t *testing.T) {
+			service := mocks.NewServiceI(t)
+			service.On("GetUser", context.Background(), v.userName, v.password).
+				Once().
+				Return(false, nil)
+			service.On("GenerateToken", context.Background(), v.userName, v.password).
+				Once().
+				Return("someJWT", nil)
 
-func TestHandler_Unsubscribe(t *testing.T) {
-	type fields struct {
-		service service.ServiceI
-		sugared *zap.SugaredLogger
-	}
-	type args struct {
-		w http.ResponseWriter
-		r *http.Request
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
 			h := &Handler{
-				service: tt.fields.service,
-				sugared: tt.fields.sugared,
+				service: service,
+				sugared: sugar,
 			}
-			h.Unsubscribe(tt.args.w, tt.args.r)
-		})
-	}
-}
 
-func TestNewHandler(t *testing.T) {
-	type args struct {
-		service service.ServiceI
-		sugared *zap.SugaredLogger
-	}
-	tests := []struct {
-		name string
-		args args
-		want *Handler
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewHandler(tt.args.service, tt.args.sugared); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewHandler() = %v, want %v", got, tt.want)
-			}
+			handler := http.HandlerFunc(h.Authorization)
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/auth", strings.NewReader(v.inputBody))
+			handler.ServeHTTP(w, r)
+			assert.Equal(t, v.expectedBody, w.Body.String())
+			assert.Equal(t, v.expectedCode, w.Code)
 		})
 	}
 }

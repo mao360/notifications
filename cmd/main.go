@@ -14,7 +14,7 @@ func main() {
 	defer logger.Sync()
 	sugar := logger.Sugar()
 
-	conn := "username=postgres host=db port=5432 dbname=postgres password=1234 sslmode=disable"
+	conn := "user=postgres host=host.docker.internal port=5436 dbname=postgres password=postgres sslmode=disable pool_max_conns=50"
 	pool, err := repo.ConnToDB(conn)
 	if err != nil {
 		sugar.Fatalf("can`t conn to db: %s", err.Error())
@@ -30,7 +30,6 @@ func main() {
 	r.HandleFunc("/subscribe", h.Auth(h.Subscribe)).Methods("POST")
 	r.HandleFunc("/unsubscribe", h.Auth(h.Unsubscribe)).Methods("DELETE")
 	r.HandleFunc("/notification", h.Auth(h.GetNotification)).Methods("GET")
-
 	err = http.ListenAndServe(":8080", r)
 	if err != nil {
 		sugar.Fatalf("can`t start server: %s", err.Error())

@@ -61,19 +61,22 @@ func (h *Handler) Authorization(w http.ResponseWriter, r *http.Request) {
 		ErrResponseFunc(h.sugared, w, http.StatusInternalServerError, "close body error", err)
 		return
 	}
-	type form struct{ Username, Password string }
+	type form struct {
+		UserName string `json:"user_name"`
+		Password string `json:"password"`
+	}
 	f := form{}
 	err = json.Unmarshal(body, &f)
 	if err != nil {
 		ErrResponseFunc(h.sugared, w, http.StatusInternalServerError, "unmarshal error", err)
 		return
 	}
-	ok, err := h.service.GetUser(r.Context(), f.Username, f.Password)
-	if err != nil || !ok {
+	got, err := h.service.GetUser(r.Context(), f.UserName, f.Password)
+	if err != nil || got {
 		ErrResponseFunc(h.sugared, w, http.StatusInternalServerError, "getUser error", err)
 		return
 	}
-	token, err := h.service.GenerateToken(r.Context(), f.Username, f.Password)
+	token, err := h.service.GenerateToken(r.Context(), f.UserName, f.Password)
 	if err != nil {
 		ErrResponseFunc(h.sugared, w, http.StatusInternalServerError, "generateToken error", err)
 		return
@@ -89,7 +92,7 @@ func (h *Handler) Authorization(w http.ResponseWriter, r *http.Request) {
 		ErrResponseFunc(h.sugared, w, http.StatusInternalServerError, "write error", err)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusOK)
 	h.sugared.Infof("handler completed: authorization")
 }
 
@@ -163,6 +166,14 @@ func CheckContext(ctx context.Context, key string) (*models.User, error) {
 }
 
 func ErrResponseFunc(logger *zap.SugaredLogger, w http.ResponseWriter, code int, message string, err error) {
-	w.WriteHeader(code)
 	logger.Errorf("%s:%s", message, err.Error())
+	resp, err := json.Marshal(map[string]interface{}{"message": message})
+	if err != nil {
+		logger.Errorf("err resp func err:%s", err.Error())
+	}
+	w.WriteHeader(code)
+	_, err = w.Write(resp)
+	if err != nil {
+		logger.Errorf("err resp func err:%s", err.Error())
+	}
 }

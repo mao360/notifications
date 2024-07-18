@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mao360/notifications/models"
-	"time"
 )
 
 //go:generate go run github.com/vektra/mockery/v2@v2.30.1 --name=RepoI
@@ -135,18 +134,24 @@ func (r *Repo) Unsubscribe(followerUsername, authorUsername string) error {
 }
 
 func (r *Repo) GetNotification(followerUsername string) ([]string, error) {
-	userNames := make([]string, 0)
-	rows, err := r.pool.Query(context.Background(),
-		`SELECT u.username FROM users
-		JOIN users_to_subscribers uts ON users.user_id = uts.user_id
-		JOIN users u on u.user_id = uts.friend_id
-		WHERE users.username = '$1' AND u.date_of_birth = '$2';`, followerUsername, time.Now().Format(time.DateOnly))
+	_, err := r.pool.Query(context.Background(),
+		`SELECT * FROM users;`)
 	if err != nil {
 		return nil, err
 	}
-	err = rows.Scan(&userNames)
-	if err != nil {
-		return nil, err
-	}
-	return userNames, nil
+	return nil, nil
+	//userNames := make([]string, 0)
+	//rows, err := r.pool.Query(context.Background(),
+	//	`SELECT u.username FROM users
+	//	JOIN users_to_subscribers uts ON users.user_id = uts.user_id
+	//	JOIN users u on u.user_id = uts.friend_id
+	//	WHERE users.username = '$1' AND u.date_of_birth = '$2';`, followerUsername, time.Now().Format(time.DateOnly))
+	//if err != nil {
+	//	return nil, err
+	//}
+	//err = rows.Scan(&userNames)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//return userNames, nil
 }

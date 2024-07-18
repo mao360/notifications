@@ -2,8 +2,8 @@ notifications app
 =
 Запуск приложения:
 -
-    make build
     make run
+
 Запуск тестов:
 -
     make test
