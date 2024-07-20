@@ -65,18 +65,20 @@ func (_m *ServiceI) GetNotification(ctx context.Context, follower string) ([]str
 }
 
 // GetUser provides a mock function with given fields: ctx, username, password
-func (_m *ServiceI) GetUser(ctx context.Context, username string, password string) (bool, error) {
+func (_m *ServiceI) GetUser(ctx context.Context, username string, password string) (*models.User, error) {
 	ret := _m.Called(ctx, username, password)
 
-	var r0 bool
+	var r0 *models.User
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) (bool, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*models.User, error)); ok {
 		return rf(ctx, username, password)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) bool); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *models.User); ok {
 		r0 = rf(ctx, username, password)
 	} else {
-		r0 = ret.Get(0).(bool)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*models.User)
+		}
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {

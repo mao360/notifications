@@ -71,8 +71,8 @@ func (h *Handler) Authorization(w http.ResponseWriter, r *http.Request) {
 		ErrResponseFunc(h.sugared, w, http.StatusInternalServerError, "unmarshal error", err)
 		return
 	}
-	got, err := h.service.GetUser(r.Context(), f.UserName, f.Password)
-	if err != nil || got {
+	user, err := h.service.GetUser(r.Context(), f.UserName, f.Password)
+	if err != nil || user == nil {
 		ErrResponseFunc(h.sugared, w, http.StatusInternalServerError, "getUser error", err)
 		return
 	}

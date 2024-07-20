@@ -18,7 +18,7 @@ type ServiceI interface {
 	NewUser(ctx context.Context, user *models.User) error
 	GenerateToken(ctx context.Context, username, password string) (string, error)
 	ParseToken(ctx context.Context, accessToken string) (*models.User, error)
-	GetUser(ctx context.Context, username, password string) (bool, error)
+	GetUser(ctx context.Context, username, password string) (*models.User, error)
 
 	Subscribe(ctx context.Context, follower, author string) error
 	Unsubscribe(ctx context.Context, follower, author string) error
@@ -72,7 +72,7 @@ func (s *Service) ParseToken(ctx context.Context, accessToken string) (*models.U
 	return user.(*models.User), nil
 }
 
-func (s *Service) GetUser(ctx context.Context, username, password string) (bool, error) {
+func (s *Service) GetUser(ctx context.Context, username, password string) (*models.User, error) {
 	return s.repo.GetUser(username, generatePasswordHash(password))
 }
 

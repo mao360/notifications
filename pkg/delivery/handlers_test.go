@@ -121,7 +121,11 @@ func TestHandler_Authorization(t *testing.T) {
 			service := mocks.NewServiceI(t)
 			service.On("GetUser", context.Background(), v.userName, v.password).
 				Once().
-				Return(false, nil)
+				Return(&models.User{
+					UserName:    v.userName,
+					Password:    v.password,
+					DateOfBirth: "10-10-1990",
+				}, nil)
 			service.On("GenerateToken", context.Background(), v.userName, v.password).
 				Once().
 				Return("someJWT", nil)

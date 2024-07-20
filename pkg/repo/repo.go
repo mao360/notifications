@@ -5,11 +5,12 @@ import (
 	"errors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mao360/notifications/models"
+	"time"
 )
 
 //go:generate go run github.com/vektra/mockery/v2@v2.30.1 --name=RepoI
 type RepoI interface {
-	GetUser(username, passwordHash string) (bool, error)
+	GetUser(username, passwordHash string) (*models.User, error)
 	NewUser(user *models.User) error
 	Subscribe(followerUsername, authorUsername string) error
 	Unsubscribe(followerUsername, authorUsername string) error
@@ -24,32 +25,39 @@ func NewRepo(pool *pgxpool.Pool) *Repo {
 	return &Repo{pool: pool}
 }
 
-func (r *Repo) GetUser(username, passwordHash string) (bool, error) {
+func (r *Repo) GetUser(username, passwordHash string) (*models.User, error) {
 	user := &models.User{}
 	rows, err := r.pool.Query(context.Background(),
 		`SELECT * FROM users
 		WHERE username = '$1';`, username)
+	defer rows.Close()
 	if err != nil {
-		return false, err
+		return nil, err
 	}
+
+	if !rows.Next() {
+		return nil, errors.New("no user")
+	}
+
 	err = rows.Scan(&user.ID, &user.UserName, &user.Password, &user.DateOfBirth)
 	if err != nil {
-		return false, errors.New("no user")
+		return nil, err
 	}
 	if user.Password != passwordHash {
-		return false, errors.New("bad password")
+		return nil, errors.New("bad password")
 	}
-	return true, nil
+	return user, nil
 }
 
 func (r *Repo) NewUser(user *models.User) error {
 	rows, err := r.pool.Query(context.Background(),
 		`SELECT * FROM users
 		WHERE username = '$1'`, user.UserName)
+	defer rows.Close()
 	if err != nil {
 		return err
 	}
-	if rows != nil {
+	if !rows.Next() {
 		return errors.New("user already exists")
 	}
 	_, err = r.pool.Exec(context.Background(),
@@ -68,10 +76,11 @@ func (r *Repo) Subscribe(followerUsername, authorUsername string) error {
 		JOIN users_to_subscribers uts ON users.user_id = uts.user_id
 		JOIN users u on u.user_id = uts.friend_id
 		WHERE users.username = '$1' AND u.username = '$2';`, followerUsername, authorUsername)
+	defer rows.Close()
 	if err != nil {
 		return err
 	}
-	if rows != nil {
+	if !rows.Next() {
 		return errors.New("already subscribed")
 	}
 
@@ -112,10 +121,11 @@ func (r *Repo) Unsubscribe(followerUsername, authorUsername string) error {
 		JOIN users_to_subscribers uts ON users.user_id = uts.user_id
 		JOIN users u on u.user_id = uts.friend_id
 		WHERE users.username = '$1' AND u.username = '$2';`, followerUsername, authorUsername)
+	defer rows.Close()
 	if err != nil {
 		return err
 	}
-	if rows == nil {
+	if !rows.Next() {
 		return errors.New("no subscription")
 	}
 	_, err = r.pool.Exec(context.Background(),
@@ -134,24 +144,23 @@ func (r *Repo) Unsubscribe(followerUsername, authorUsername string) error {
 }
 
 func (r *Repo) GetNotification(followerUsername string) ([]string, error) {
-	_, err := r.pool.Query(context.Background(),
-		`SELECT * FROM users;`)
+	userNames := make([]string, 0)
+	rows, err := r.pool.Query(context.Background(),
+		`SELECT u.username FROM users
+		JOIN users_to_subscribers uts ON users.user_id = uts.user_id
+		JOIN users u on u.user_id = uts.friend_id
+		WHERE users.username = '$1' AND u.date_of_birth = '$2';`, followerUsername, time.Now().Format(time.DateOnly))
+	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
-	//userNames := make([]string, 0)
-	//rows, err := r.pool.Query(context.Background(),
-	//	`SELECT u.username FROM users
-	//	JOIN users_to_subscribers uts ON users.user_id = uts.user_id
-	//	JOIN users u on u.user_id = uts.friend_id
-	//	WHERE users.username = '$1' AND u.date_of_birth = '$2';`, followerUsername, time.Now().Format(time.DateOnly))
-	//if err != nil {
-	//	return nil, err
-	//}
-	//err = rows.Scan(&userNames)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//return userNames, nil
+	str := ""
+	for rows.Next() {
+		err = rows.Scan(&str)
+		if err != nil {
+			return nil, err
+		}
+		userNames = append(userNames, str)
+	}
+	return userNames, nil
 }
