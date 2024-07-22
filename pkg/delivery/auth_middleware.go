@@ -2,33 +2,44 @@ package delivery
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 )
 
-func (h *Handler) Auth(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+type ContextKey string
+
+func (h *Handler) Auth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.sugared.Infof("middleware started")
 		header := r.Header.Get("Authorization")
 		if header == "" {
-			w.WriteHeader(http.StatusUnauthorized)
+			ErrResponseFunc(h.sugared, w, http.StatusUnauthorized, "empty authorization header",
+				errors.New("empty authorization header"))
 			return
 		}
 		bisectedHeader := strings.Split(header, " ")
 		if bisectedHeader[0] != "Bearer" {
-			w.WriteHeader(http.StatusUnauthorized)
+			ErrResponseFunc(h.sugared, w, http.StatusUnauthorized, "not Bearer auth",
+				errors.New("not bearer auth"))
 			return
 		}
 		if len(bisectedHeader[1]) == 0 {
-			//errors.New("empty token")
-			w.WriteHeader(http.StatusUnauthorized)
+			ErrResponseFunc(h.sugared, w, http.StatusUnauthorized, "empty token",
+				errors.New("empty token"))
 			return
 		}
 		user, err := h.service.ParseToken(context.Background(), bisectedHeader[1])
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			ErrResponseFunc(h.sugared, w, http.StatusUnauthorized, "invalid token",
+				errors.New("invalid token"))
 			return
 		}
-		ctx := context.WithValue(r.Context(), "user", user)
+		h.sugared.Infof("user: %s, %s, %s", user.UserName, user.Password, user.DateOfBirth)
+		var key ContextKey
+		key = "user"
+		ctx := context.WithValue(r.Context(), key, user)
 		next.ServeHTTP(w, r.WithContext(ctx))
-	}
+		h.sugared.Infof("auth middleware completed")
+	})
 }

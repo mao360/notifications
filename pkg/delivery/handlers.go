@@ -98,12 +98,14 @@ func (h *Handler) Authorization(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	h.sugared.Infof("handler started: subscribe")
-	user, err := CheckContext(r.Context(), "user")
+	user, err := CheckContext(r.Context())
 	if err != nil {
 		ErrResponseFunc(h.sugared, w, http.StatusInternalServerError, "checkContext error", err)
 		return
 	}
 	username := r.URL.Query().Get("username")
+	h.sugared.Infof("query param is: %s", username)
+	h.sugared.Infof("username(follower) is: %s", user.UserName)
 	err = h.service.Subscribe(r.Context(), user.UserName, username)
 	if err != nil {
 		ErrResponseFunc(h.sugared, w, http.StatusInternalServerError, "subscribe error", err)
@@ -115,7 +117,7 @@ func (h *Handler) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Unsubscribe(w http.ResponseWriter, r *http.Request) {
 	h.sugared.Infof("handler started: unsubscribe")
-	user, err := CheckContext(r.Context(), "user")
+	user, err := CheckContext(r.Context())
 	if err != nil {
 		ErrResponseFunc(h.sugared, w, http.StatusInternalServerError, "checkContext error", err)
 		return
@@ -132,7 +134,7 @@ func (h *Handler) Unsubscribe(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) GetNotification(w http.ResponseWriter, r *http.Request) {
 	h.sugared.Infof("handler started: getNotification")
-	user, err := CheckContext(r.Context(), "user")
+	user, err := CheckContext(r.Context())
 	if err != nil {
 		ErrResponseFunc(h.sugared, w, http.StatusInternalServerError, "checkContext error", err)
 		return
@@ -156,18 +158,25 @@ func (h *Handler) GetNotification(w http.ResponseWriter, r *http.Request) {
 	h.sugared.Infof("handler completed: getNotification")
 }
 
-func CheckContext(ctx context.Context, key string) (*models.User, error) {
+func CheckContext(ctx context.Context) (*models.User, error) {
+	var key ContextKey = "user"
 	data := ctx.Value(key)
 	if data == nil {
 		return nil, errors.New("empty context")
 	}
-	user := data.(*models.User)
+	user, ok := data.(*models.User)
+	if !ok {
+		return nil, errors.New("invalid context")
+	}
 	return user, nil
 }
 
 func ErrResponseFunc(logger *zap.SugaredLogger, w http.ResponseWriter, code int, message string, err error) {
 	logger.Errorf("%s:%s", message, err.Error())
-	resp, err := json.Marshal(map[string]interface{}{"message": message})
+	resp, err := json.Marshal(map[string]interface{}{
+		"message": message,
+		"error":   err.Error(),
+	})
 	if err != nil {
 		logger.Errorf("err resp func err:%s", err.Error())
 	}

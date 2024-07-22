@@ -31,9 +31,9 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/reg", h.Registration).Methods("POST")
 	r.HandleFunc("/auth", h.Authorization).Methods("POST")
-	r.HandleFunc("/subscribe", h.Auth(h.Subscribe)).Methods("POST")
-	r.HandleFunc("/unsubscribe", h.Auth(h.Unsubscribe)).Methods("DELETE")
-	r.HandleFunc("/notification", h.Auth(h.GetNotification)).Methods("GET")
+	r.Handle("/subscribe", h.Auth(http.HandlerFunc(h.Subscribe))).Methods("POST")
+	r.Handle("/unsubscribe", h.Auth(http.HandlerFunc(h.Unsubscribe))).Methods("DELETE")
+	r.Handle("/notification", h.Auth(http.HandlerFunc(h.GetNotification))).Methods("GET")
 	err = http.ListenAndServe(lisAddr, r)
 	if err != nil {
 		sugar.Fatalf("can`t start server: %s", err.Error())

@@ -3,8 +3,8 @@ DROP TABLE IF EXISTS users_to_subscribers CASCADE;
 
 CREATE TABLE users (
     user_id SERIAL PRIMARY KEY,
-    password VARCHAR(10),
-    username VARCHAR(10) UNIQUE,
+    password VARCHAR(255),
+    username VARCHAR(255) UNIQUE,
     date_of_birth DATE
 );
 

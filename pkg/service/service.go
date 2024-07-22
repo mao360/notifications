@@ -8,6 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/mao360/notifications/models"
 	"github.com/mao360/notifications/pkg/repo"
+	"github.com/mitchellh/mapstructure"
 )
 
 const signature = "gd0394t389dfnvdsjnakjf23"
@@ -48,7 +49,7 @@ func (s *Service) NewUser(ctx context.Context, user *models.User) error {
 func (s *Service) GenerateToken(ctx context.Context, username, password string) (string, error) {
 	user, err := s.repo.GetUser(username, generatePasswordHash(password))
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user": user,
@@ -65,11 +66,28 @@ func (s *Service) ParseToken(ctx context.Context, accessToken string) (*models.U
 	if err != nil {
 		return nil, err
 	}
-	user, ok := token.Claims.(jwt.MapClaims)["user"]
+	//1s
+	//user, ok := token.Claims.(jwt.MapClaims)["user"]
+	//if !ok {
+	//	return nil, errors.New("empty claims")
+	//}
+	//return user.(*models.User), nil
+	//1e
+
+	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, errors.New("empty claims")
+		return nil, errors.New("invalid token claims")
 	}
-	return user.(*models.User), nil
+	userMap, ok := claims["user"].(map[string]interface{})
+	if !ok {
+		return nil, errors.New("claims isn`t map")
+	}
+	user := &models.User{}
+	err = mapstructure.Decode(userMap, user)
+	if err != nil {
+		return nil, errors.New("failed to decode user map into User struct")
+	}
+	return user, nil
 }
 
 func (s *Service) GetUser(ctx context.Context, username, password string) (*models.User, error) {
