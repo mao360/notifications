@@ -66,13 +66,6 @@ func (s *Service) ParseToken(ctx context.Context, accessToken string) (*models.U
 	if err != nil {
 		return nil, err
 	}
-	//1s
-	//user, ok := token.Claims.(jwt.MapClaims)["user"]
-	//if !ok {
-	//	return nil, errors.New("empty claims")
-	//}
-	//return user.(*models.User), nil
-	//1e
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {

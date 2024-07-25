@@ -127,7 +127,7 @@ func (r *Repo) Subscribe(followerUsername, authorUsername string) error {
 
 func (r *Repo) Unsubscribe(followerUsername, authorUsername string) error {
 	rows, err := r.pool.Query(context.Background(),
-		`SELECT (*) FROM users
+		`SELECT * FROM users
 		JOIN users_to_subscribers uts ON users.user_id = uts.user_id
 		JOIN users u on u.user_id = uts.friend_id
 		WHERE users.username = $1 AND u.username = $2;`, followerUsername, authorUsername)
@@ -159,7 +159,8 @@ func (r *Repo) GetNotification(followerUsername string) ([]string, error) {
 		`SELECT u.username FROM users
 		JOIN users_to_subscribers uts ON users.user_id = uts.user_id
 		JOIN users u on u.user_id = uts.friend_id
-		WHERE users.username = $1 AND u.date_of_birth = $2;`, followerUsername, time.Now().Format(time.DateOnly))
+		WHERE users.username = $1 AND EXTRACT(DAY FROM u.date_of_birth) = EXTRACT(DAY FROM $2::date)
+		AND EXTRACT(MONTH FROM u.date_of_birth) = EXTRACT(MONTH FROM $3::date);`, followerUsername, time.Now().Format(time.DateOnly), time.Now().Format(time.DateOnly))
 	defer rows.Close()
 	if err != nil {
 		return nil, fmt.Errorf("query err: %v", err)

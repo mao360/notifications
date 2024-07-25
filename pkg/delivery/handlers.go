@@ -104,8 +104,6 @@ func (h *Handler) Subscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	username := r.URL.Query().Get("username")
-	h.sugared.Infof("query param is: %s", username)
-	h.sugared.Infof("username(follower) is: %s", user.UserName)
 	err = h.service.Subscribe(r.Context(), user.UserName, username)
 	if err != nil {
 		ErrResponseFunc(h.sugared, w, http.StatusInternalServerError, "subscribe error", err)
